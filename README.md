@@ -5,3 +5,5 @@
 4. `pip install -r requirements.txt`
 3. functions 폴더에서 파일을 수정한다.
 4. 최상위 폴더에서 firebase deploy --only functions
+
+__추후 기능 확장 예정__
