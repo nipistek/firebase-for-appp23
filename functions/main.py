@@ -14,7 +14,7 @@ import math, os
 # load_dotenv()
 initialize_app()
 
-_API_KEY = "AIzaSyB69E5-_NFjy7FJZPyaRzzsKZGHju3jVe8" # this is ok because it's a public API key and it's restricted to only be used by this app
+_API_KEY = "AIzaSyB69E5-_NFjy7FJZPyaRzzsKZGHju3jVe8" # this is ok because it's a public API key and it's restricted to google maps related APIs
 # _API_KEY = os.getenv("G")
 gmap = googlemaps.Client(_API_KEY)
 
