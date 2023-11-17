@@ -7,7 +7,9 @@ firebase functions에 보낼 메소드 쓰는 곳
 - sending_data_to_database.py
 
 osupumplist2 폴더에 있는 txt 파일을 읽어서 firebase firestore에 보내는 데이터베이스 시딩에 쓰일 작은 스크립트.
+
 파이어베이스_어드민_뭐시기.json 파일이 이 파일과 같은 위치에 필요하다.
+
 __주의: 실행은 최상위 폴더에서 할 것__
 
 txt 파일의 형식은 다음과 같다.
