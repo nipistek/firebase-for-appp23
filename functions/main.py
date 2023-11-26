@@ -8,7 +8,7 @@ from firebase_admin import initialize_app, firestore
 # from dotenv import load_dotenv
 import googlemaps
 
-import math, os
+import math
 
 
 # load_dotenv()
@@ -19,9 +19,9 @@ _API_KEY = "AIzaSyB69E5-_NFjy7FJZPyaRzzsKZGHju3jVe8" # this is ok because it's a
 gmap = googlemaps.Client(_API_KEY)
 
 
-@https_fn.on_request()
-def on_request_example(req: https_fn.Request) -> https_fn.Response:
-    return https_fn.Response("Hello world!")
+# @https_fn.on_request()
+# def on_request_example(req: https_fn.Request) -> https_fn.Response:
+#     return https_fn.Response("Hello world!")
 
 
 @firestore_fn.on_document_created(document="stores/{storeId}", region="asia-northeast2")
@@ -55,34 +55,51 @@ def on_document_created_example(
 #     """Triggered when a document is updated. automatically geocodes the address and adds it to 'coords' field"""
 
 
-# 아직 완성 안된 메소드 (아래)
-# @https_fn.on_request()
-# def on_request_calculate_10km_markers(req: https_fn.Request) -> https_fn.Response:
-#     """Gets all stores within 10km of the user's location and returns a list of their IDs"""
-#     user_coords = req.json.get("coords")
-#
-#     if not user_coords:
-#         return https_fn.Response("No coords provided", status=400)
-#
-#     stores = firestore.client().collection("stores").stream()
-#
-#     stores_within_10km = []
-#
-#     for store in stores:
-#         store_coords = store.get("coords")
-#         if store_coords:
-#             distance = gmap.distance_matrix(user_coords, store_coords)["rows"][0]["elements"][0]["distance"]["value"]
-#             if distance <= 10000:
-#                 stores_within_10km.append(store.id)
-#
-#     # or calculate manually with haversine formula
-#     # https://stackoverflow.com/questions/19412462/getting-distance-between-two-points-based-on-latitude-longitude
-#     # https://stackoverflow.com/questions/4913349/haversine-formula-in-python-bearing-and-distance-between-two-gps-points
-#     # for store in stores:
-#     #     store_coords = store.get("coords")
-#     #     if store_coords:
-#     #         distance = 6371 * math.acos(math.cos(math.radians(user_coords["lat"])) * math.cos(math.radians(store_coords["lat"])) * math.cos(math.radians(store_coords["lng"]) - math.radians(user_coords["lng"])) + math.sin(math.radians(user_coords["lat"])) * math.sin(math.radians(store_coords["lat"])))
-#     #         if distance <= 10000:
-#     #             stores_within_10km.append(store.id)
-#
-#     return https_fn.Response(stores_within_10km)
+def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate the great circle distance between two points on the earth (specified in decimal degrees)"""
+    # https://stackoverflow.com/questions/4913349/haversine-formula-in-python-bearing-and-distance-between-two-gps-points 등...
+
+    # convert decimal degrees to radians
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+
+    # haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    )
+    c = 2 * math.asin(math.sqrt(a))
+    r = 6371 * 1000  # Radius of earth in meters
+    return c * r
+
+# firebase는 geoquery를 지원하지 않는다.
+# firebase geofire를 사용하려고 했으나, python용 라이브러리가 없다. 그러면 javascript로 다시 써야 하고, 각 document에 대해 hash를 계산해서 놓아야 한다고 한다.
+# 그래서 그냥 firestore에서 store를 가져와서, python으로 계산하는 방법을 사용하려고 한다.
+
+
+@https_fn.on_request(region="asia-northeast2")
+def find_stores_nearby_n_km_radius(
+    req: https_fn.CallableRequest
+) -> https_fn.Response:
+    """Returns a list of stores within a given radius of a given location"""
+    # get the location from sent data
+    center_lat = req.args.get("lat")
+    center_lng = req.args.get("lng")
+    R = req.args.get("radius") # meters
+    center_lat, center_lng, R = map(float, [center_lat, center_lng, R])
+
+    db = firestore.client()
+    stores_ref = db.collection("stores")
+    stores = stores_ref.stream() # 제한을 두지 않으면, 모든 store를 가져온다. 이건 좋지 않은 방법이다. 나중에 수정해야 한다.
+    # 성능 실험 해야 할듯... (100개 이상의 store가 있으면, 어떻게 되는지)
+
+    # get the stores within the radius
+    stores_within_radius = []
+    for doc in stores:
+        store_data = doc.to_dict()
+        store_coords = store_data.get("coords")
+        if store_coords and haversine(center_lat, center_lng, store_coords["lat"], store_coords["lng"]) <= R:
+            stores_within_radius.append(store_data)
+    
+    return stores_within_radius
