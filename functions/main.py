@@ -70,7 +70,7 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     )
     c = 2 * math.asin(math.sqrt(a))
-    r = 6371 * 1000  # Radius of earth in meters
+    r = 6371 # Radius of earth in kilometers.
     return c * r
 
 # firebase는 geoquery를 지원하지 않는다.
