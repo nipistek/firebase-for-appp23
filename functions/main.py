@@ -88,6 +88,8 @@ def find_stores_nearby_n_km_radius(
     center_lng = req.args.get("lng")
     R = req.args.get("radius") # meters
     center_lat, center_lng, R = map(float, [center_lat, center_lng, R])
+    print(f"center_lat: {center_lat}, center_lng: {center_lng}, R: {R}")
+    print(type(center_lat), type(center_lng), type(R))
 
     db = firestore.client()
     stores_ref = db.collection("stores")
@@ -96,6 +98,35 @@ def find_stores_nearby_n_km_radius(
 
     # get the stores within the radius
     stores_within_radius = []
+    for doc in stores:
+        store_data = doc.to_dict()
+        store_coords = store_data.get("coords")
+        if store_coords and haversine(center_lat, center_lng, store_coords["lat"], store_coords["lng"]) <= R:
+            stores_within_radius.append(store_data)
+    
+    return stores_within_radius
+
+
+@https_fn.on_call(region="asia-northeast2")
+def find_stores_nearby_n_km_radius_call(
+    req: https_fn.CallableRequest
+) -> https_fn.Response:
+    """Returns a list of stores within a given radius of a given location"""
+    # get the location from sent data
+    center_lat = req.data['lat']
+    center_lng = req.data['lng']
+    R = req.data['radius'] # km
+    center_lat, center_lng, R = map(float, [center_lat, center_lng, R])
+    print(f"center_lat: {center_lat}, center_lng: {center_lng}, R: {R}")
+    print(type(center_lat), type(center_lng), type(R))
+
+    db = firestore.client()
+    stores_ref = db.collection("stores")
+    stores = stores_ref.stream() ##
+
+    # get the stores within the radius
+    stores_within_radius = []
+    
     for doc in stores:
         store_data = doc.to_dict()
         store_coords = store_data.get("coords")
